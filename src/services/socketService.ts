@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { io, Socket } from 'socket.io-client';
 import * as mediasoupClient from 'mediasoup-client';
 
@@ -6,11 +7,12 @@ class SocketService {
   private device: mediasoupClient.Device | null = null;
 
   constructor() {
-    this.socket = io('http://localhost:7071', {
+    this.socket = io('http://localhost:9000', {
       autoConnect: false,
       auth: {
         userId:
           '67121c35f79269a6cb894664',
+        token:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Mzg0MDk0MDdhOTE5ODc5Nzk4NzliNiIsImVtYWlsIjoiZHVydWFrdWVidWthQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoid2l0dHlfb3R0ZXJfMTczMTczOTc5NjU1MSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzMxODM0MjY0LCJleHAiOjE3MzE4Mzc4NjR9.82I2BVNc49hPUOkg6x_LpWwC7h7xrbooQGaVfD5X0nQ'
       },
     });
   }
@@ -129,15 +131,24 @@ class SocketService {
     this.socket.on(event, callback);
   }
 
-  emit(event: string, data?: any): void {
-    this.socket.emit(event, data);
+  emit(event: string, data?: any, callback?: (response: any) => void): void {
+    if (callback) {
+      this.socket.emit(event, data, callback);
+    } else {
+      this.socket.emit(event, data);
+    }
   }
+
+
 
   removeListener(event: string, callback: (...args: any[]) => void): void {
     this.socket.off(event, callback);
   }
   removeAllListeners(): void {
     this.socket.removeAllListeners();
+  }
+  getCustomSocket(){
+    return this.socket
   }
 
 

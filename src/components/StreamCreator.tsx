@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Camera, CameraOff, Mic, MicOff } from 'lucide-react';
 import socketService from '@/services/socketService';
+import { Card, CardContent } from './ui/card';
 
 const StreamCreator: React.FC = () => {
   const { toast } = useToast();
@@ -14,6 +15,13 @@ const StreamCreator: React.FC = () => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
+  const [localRoomId, setLocalRoomId] = useState(null);
+  const [seats, setSeats] = useState<
+    Array<{ userId: string; username: string } | null>
+  >(new Array(5).fill(null));
+  const [seatRequests, setSeatRequests] = useState<
+    Array<{ userId: string; username: string }>
+  >([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -56,6 +64,61 @@ const StreamCreator: React.FC = () => {
       videoRef.current.srcObject = localStream;
     }
   }, [localStream]);
+
+  // Add socket event listeners
+  useEffect(() => {
+    if (localRoomId) {
+      // Listen for new seat requests
+      socketService.on(
+        'seat-request',
+        (data: { userId: string; username: string }) => {
+          setSeatRequests((prev) => [...prev, data]);
+          toast({
+            title: 'New Seat Request',
+            description: `${data.username} has requested to join`,
+          });
+        }
+      );
+
+      // Listen for when a user joins a seat
+      socketService.on(
+        'user-joined-seat',
+        (data: { seatNumber: number; userId: string; username: string }) => {
+          setSeats((prev) => {
+            const newSeats = [...prev];
+            newSeats[data.seatNumber] = {
+              userId: data.userId,
+              username: data.username,
+            };
+            return newSeats;
+          });
+          // Remove from requests if they were accepted
+          setSeatRequests((prev) =>
+            prev.filter((request) => request.userId !== data.userId)
+          );
+        }
+      );
+
+      // Listen for when a user is kicked
+      socketService.on(
+        'user-kicked-from-seat',
+        (data: { seatNumber: number; userId: string }) => {
+          setSeats((prev) => {
+            const newSeats = [...prev];
+            newSeats[data.seatNumber] = null;
+            return newSeats;
+          });
+        }
+      );
+
+      // Cleanup socket listeners
+      return () => {
+        socketService.getCustomSocket().removeListener('seat-request');
+        socketService.getCustomSocket().removeListener('user-joined-seat');
+        socketService.getCustomSocket().removeListener('user-kicked-from-seat');
+      };
+    }
+  }, [localRoomId, toast]);
 
   const cleanupStream = () => {
     console.log('Cleaning up stream...');
@@ -166,6 +229,7 @@ const StreamCreator: React.FC = () => {
       setLocalStream(stream);
 
       const roomId = `room-${Date.now()}`;
+      setLocalRoomId(roomId);
       console.log(`Room ID generated: ${roomId}`);
 
       const createStreamResponse = await socketService.sendRequest(
@@ -275,6 +339,88 @@ const StreamCreator: React.FC = () => {
     });
   };
 
+  const handleAcceptSeatRequest = (userId: string) => {
+    // Find first available seat
+    const availableSeatIndex = seats.findIndex((seat) => seat === null);
+
+    if (availableSeatIndex === -1) {
+      toast({
+        title: 'Error',
+        description: 'No available seats',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    socketService.emit(
+      'accept-seat-request',
+      { roomId: localRoomId, userId, seatNumber: availableSeatIndex },
+      (response) => {
+        if (response.success) {
+          setSeats((prevSeats) => {
+            const newSeats = [...prevSeats];
+            newSeats[availableSeatIndex] = {
+              userId,
+              username: response.username,
+            };
+            return newSeats;
+          });
+          setSeatRequests((prevRequests) =>
+            prevRequests.filter((request) => request.userId !== userId)
+          );
+          toast({
+            title: 'Seat Request Accepted',
+            description: `User has been assigned to seat ${
+              availableSeatIndex + 1
+            }`,
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: response.error || 'Failed to accept seat request',
+            variant: 'destructive',
+          });
+        }
+      }
+    );
+  };
+
+  const handleDenySeatRequest = (userId: string) => {
+    setSeatRequests((prevRequests) =>
+      prevRequests.filter((request) => request.userId !== userId)
+    );
+    toast({
+      title: 'Request Denied',
+      description: 'Seat request has been denied',
+    });
+  };
+
+  const handleKickFromSeat = (userId: string, seatNumber: number) => {
+    socketService.emit(
+      'kick-from-seat',
+      { roomId: localRoomId, userId, seatNumber },
+      (response) => {
+        if (response.success) {
+          setSeats((prevSeats) => {
+            const newSeats = [...prevSeats];
+            newSeats[seatNumber] = null;
+            return newSeats;
+          });
+          toast({
+            title: 'User Kicked',
+            description: `User has been kicked from seat ${seatNumber + 1}`,
+          });
+        } else {
+          toast({
+            title: 'Kick Failed',
+            description: response.error,
+            variant: 'destructive',
+          });
+        }
+      }
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -314,6 +460,64 @@ const StreamCreator: React.FC = () => {
             >
               {isVideoMuted ? <CameraOff /> : <Camera />}
             </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-5 gap-4">
+        {seats.map((seat, index) => (
+          <Card key={index} className={seat ? 'bg-blue-500 text-white' : ''}>
+            <CardContent className="flex justify-between items-center">
+              {seat ? (
+                <div>
+                  <div className="font-semibold">{seat.username}</div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleKickFromSeat(seat.userId, index)}
+                  >
+                    Kick
+                  </Button>
+                </div>
+              ) : (
+                <div>Seat {index + 1}</div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="space-x-2">
+        {seatRequests.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Seat Requests</h3>
+            <div className="space-y-2">
+              {seatRequests.map((request) => (
+                <Card
+                  key={request.userId}
+                  className="bg-gray-100 dark:bg-gray-800"
+                >
+                  <CardContent className="flex justify-between items-center p-4">
+                    <span className="font-medium">{request.username}</span>
+                    <div className="space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleAcceptSeatRequest(request.userId)}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDenySeatRequest(request.userId)}
+                      >
+                        Deny
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
       </div>
