@@ -6,13 +6,17 @@ class SocketService {
   private socket: Socket;
   private device: mediasoupClient.Device | null = null;
 
-  constructor() {
+  // Initialize socket with auth credentials
+  initializeSocket(userId: string, token: string) {
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+
     this.socket = io('http://localhost:9000', {
       autoConnect: false,
       auth: {
-        userId:
-          '67121c35f79269a6cb894664',
-        token:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Mzg0MDk0MDdhOTE5ODc5Nzk4NzliNiIsImVtYWlsIjoiZHVydWFrdWVidWthQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoid2l0dHlfb3R0ZXJfMTczMTczOTc5NjU1MSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzMxODM0MjY0LCJleHAiOjE3MzE4Mzc4NjR9.82I2BVNc49hPUOkg6x_LpWwC7h7xrbooQGaVfD5X0nQ'
+        userId,
+        token,
       },
     });
   }
