@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+//client
 import { io, Socket } from 'socket.io-client';
 import * as mediasoupClient from 'mediasoup-client';
 
@@ -9,15 +10,41 @@ class SocketService {
   // Initialize socket with auth credentials
   initializeSocket(userId: string, token: string) {
     if (this.socket) {
+      console.log('this.socket', this.socket);
       this.socket.disconnect();
     }
 
-    this.socket = io('http://localhost:9000', {
+    this.socket = io('https://deploy-mester.vercel.app', {
+      path: '/socket.io/',
+      transports: ['websocket', 'polling'],
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
       autoConnect: false,
+
+      secure: true,
+      rejectUnauthorized: false,
       auth: {
         userId,
         token,
       },
+      // Add timeout and reconnection settings
+      // timeout: 5000
+    });
+
+    // More comprehensive error handling
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket Connection Error:', error);
+      console.log('Error Details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+    });
+
+    this.socket.on('connect_failed', (error) => {
+      console.error('Socket Connection Failed:', error);
     });
   }
 
@@ -100,14 +127,14 @@ class SocketService {
       roomId,
       consuming: true,
     });
-    console.log("reciever transport info", transportInfo)
+    console.log('reciever transport info', transportInfo);
     return this.device.createRecvTransport({
-        id: transportInfo.params.id,
-        iceParameters: transportInfo.params.iceParameters,
-        iceCandidates: transportInfo.params.iceCandidates,
-        dtlsParameters: transportInfo.params.dtlsParameters,
-        iceServers: [],
-        appData: { roomId },
+      id: transportInfo.params.id,
+      iceParameters: transportInfo.params.iceParameters,
+      iceCandidates: transportInfo.params.iceCandidates,
+      dtlsParameters: transportInfo.params.dtlsParameters,
+      iceServers: [],
+      appData: { roomId },
     });
   }
 
@@ -143,18 +170,15 @@ class SocketService {
     }
   }
 
-
-
   removeListener(event: string, callback: (...args: any[]) => void): void {
     this.socket.off(event, callback);
   }
   removeAllListeners(): void {
     this.socket.removeAllListeners();
   }
-  getCustomSocket(){
-    return this.socket
+  getCustomSocket() {
+    return this.socket;
   }
-
 
   disconnect(): void {
     this.socket.disconnect();

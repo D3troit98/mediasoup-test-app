@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation, Outlet, Link } from 'react-router-dom';
+import { useLocation, Outlet, Link } from 'react-router';
 import ProtectedRoute from './ProtectedRoute';
 import { Toaster } from './ui/toaster';
 import { Button } from './ui/button';

@@ -34,6 +34,7 @@ const StreamsPage = () => {
         if (!user?._id || !accessToken) {
           throw new Error('Authentication required');
         }
+        console.log('initializing socket');
         // Initialize socket with auth credentials
         socketService.initializeSocket(user._id, accessToken);
         await socketService.connect();
