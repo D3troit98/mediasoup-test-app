@@ -6,6 +6,7 @@
   ],
   "compilerOptions": {
     "noImplicitAny": false,
+    "skipLibCheck": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

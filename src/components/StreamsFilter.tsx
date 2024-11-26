@@ -175,21 +175,25 @@ const StreamsFilter = ({
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() =>
-                      handlePageChange(Math.max(1, currentPage - 1))
-                    }
-                    disabled={currentPage === 1}
-                  />
+                  {currentPage == !1 && (
+                    <PaginationPrevious
+                      onClick={() =>
+                        handlePageChange(Math.max(1, currentPage - 1))
+                      }
+                      // disabled={currentPage === 1}
+                    />
+                  )}
                 </PaginationItem>
                 {renderPaginationItems()}
                 <PaginationItem>
-                  <PaginationNext
-                    onClick={() =>
-                      handlePageChange(Math.min(totalPages, currentPage + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                  />
+                  {currentPage !== totalPages && (
+                    <PaginationNext
+                      onClick={() =>
+                        handlePageChange(Math.min(totalPages, currentPage + 1))
+                      }
+                      // disabled={currentPage === totalPages}
+                    />
+                  )}
                 </PaginationItem>
               </PaginationContent>
             </Pagination>

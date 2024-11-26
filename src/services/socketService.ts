@@ -1,5 +1,6 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
-//client
+
 import { io, Socket } from 'socket.io-client';
 import * as mediasoupClient from 'mediasoup-client';
 
@@ -14,7 +15,7 @@ class SocketService {
       this.socket.disconnect();
     }
 
-    this.socket = io('https://deploy-mester.vercel.app', {
+    this.socket = io(import.meta.env.VITE_API_BASE_URL, {
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
       forceNew: true,
@@ -63,10 +64,12 @@ class SocketService {
       this.device = new mediasoupClient.Device();
 
       const routerRtpCapabilities = await this.getRouterRtpCapabilities();
-      console.log(
-        'routerRtpCapabilities: ',
-        routerRtpCapabilities.rtpCapabilities
-      );
+console.log(
+  'routerRtpCapabilities: ',
+  // @ts-expect-error: Type mismatch - rtpCapabilities might not exist
+  routerRtpCapabilities.rtpCapabilities
+);
+// @ts-expect-error: Type mismatch - rtpCapabilities might not exist
       const hasVideoCodec = routerRtpCapabilities.rtpCapabilities.codecs.some(
         (codec) => codec.kind === 'video'
       );
@@ -76,6 +79,7 @@ class SocketService {
       }
 
       await this.device.load({
+        // @ts-expect-error: Type mismatch - rtpCapabilities might not exist
         routerRtpCapabilities: routerRtpCapabilities.rtpCapabilities,
       });
     }
@@ -87,6 +91,7 @@ class SocketService {
 
   async createSendTransport(
     roomId: string
+    // @ts-expect-error: Type mismatch - rtpCapabilities might not exist
   ): Promise<mediasoupClient.Transport> {
     if (!this.device) {
       throw new Error('Device not loaded');
@@ -119,6 +124,7 @@ class SocketService {
 
   async createRecvTransport(
     roomId: string
+    // @ts-expect-error: Type mismatch - rtpCapabilities might not exist
   ): Promise<mediasoupClient.Transport> {
     if (!this.device) {
       throw new Error('Device not loaded');

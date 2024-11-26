@@ -219,6 +219,10 @@ const StreamViewer: React.FC<StreamViewerProps> = ({ roomId }) => {
     });
 
     socketService.on('user-kicked-from-seat', ({ seatNumber, userId }) => {
+        toast({
+          title: 'user removed',
+          description: `${userId} removed from seat`,
+        });
       setSeats((prevSeats) => {
         const newSeats = [...prevSeats];
         newSeats[seatNumber] = null;
